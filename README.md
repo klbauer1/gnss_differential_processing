@@ -5,7 +5,7 @@ This repository contains scripts and tools that perform post-processing kinemati
 ## Dependencies 
 This software makes use of the Python programming language and was built on Python 3.13.5. Additional package requirements can be found in the requirements.txt file (*not yet provided*). 
 
-In order to run the differential correction and optional base station positioning, the [RTKLIB](https://github.com/tomojitakasu/RTKLIB)software must be installed. Ensure that the folder containing all of the RTKLIB information is placed in the same folder as the Python script. It can be placed in a different location, but the path will need to be entered manually before starting the processing. 
+In order to run the differential correction and optional base station positioning, the [RTKLIB](https://github.com/tomojitakasu/RTKLIB](https://github.com/rtklibexplorer/RTKLIB/releases/tag/v2.5.0) software must be installed (Note that this is a different branch than the "Master" version and it writes "events.pos" files, which are needed for this to function). Ensure that the folder containing all of the RTKLIB information is placed in the same folder as the Python script. It can be placed in a different location, but the path will need to be entered manually before starting the processing. 
 
 Because the processing is dependent on RTKLIB, only a computer running **Windows** should be used. This was tested on Windows 10 and Windows 11, so the use of other versions may very. 
 
