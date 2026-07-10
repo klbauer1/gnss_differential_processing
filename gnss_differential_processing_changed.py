@@ -12,17 +12,17 @@
 
 
 # ==============================================================================
-# CHANGELOG (Katie)
+# CHANGELOG (Katie). Tracked from gnss_differential_processing.py
 # ==============================================================================
-# Lines 40-49:   Added SSL context via certifi to bypass Windows download blocks.
-# Lines 93-99:   Swapped naive substring check with os.path.splitext to match RINEX.
-# Lines 162-198: Upgraded check_precise_files to scan across multi-tier product tags.
-# Lines 201-274: Implemented dynamic product fallbacks (FIN -> RAP -> ULT) based on data age.
-# Lines 315-325: Patched process_base_station to capture shell errors from RTKLIB.
-# Lines 404-406: Protected base_locate to return None safely on missing products.
-# Lines 525-530: Restructured point_list loop bounds to mark_df length to resolve IndexError.
-# Lines 538-555: Initialized posdf early and allowed .pos file searches to solve UnboundLocalError.
-# Line 847:      Added 'base_info is None' safeguard to skip rover loops cleanly.
+# Lines 40-49:   added SSL context via certifi to bypass Windows download blocks.
+# Lines 103-109: swapped substring check with os.path.splitext to match RINEX.
+# Lines 186-214: upgraded check_precise_files to scan across multi-tier product tags.
+# Lines 218-267: implemented dynamic product fallbacks (FIN -> RAP -> ULT) based on data age.
+# Lines 295-314: patched process_base_station to capture shell errors from RTKLIB.
+# Lines 365-415: protected base_locate to return None safely on missing products.
+# Lines 466-471: restructured point_list loop bounds to mark_df length to resolve IndexError.
+# Lines 475-511: initialized posdf early and allowed .pos file searches to solve UnboundLocalError.
+# Line 784:      added 'base_info is None' safeguard to skip rover loops cleanly. Still not fixed idk
 # ==============================================================================
 
 
@@ -54,9 +54,7 @@ import gzip
 import ssl
 import certifi
 
-# Fix for [SSL: CERTIFICATE_VERIFY_FAILED] errors on Windows: explicitly use
-# certifi's CA bundle for all urllib requests instead of relying on the
-# (sometimes incomplete) system certificate store.
+# Fix for [SSL: CERTIFICATE_VERIFY_FAILED]
 _ssl_context = ssl.create_default_context(cafile=certifi.where())
 _https_handler = urllib.request.HTTPSHandler(context=_ssl_context)
 _opener = urllib.request.build_opener(_https_handler)
@@ -125,10 +123,10 @@ def event_write(in_path, out_path):
 # to "obs" and "nav", respectively, where needed
 def file_check(rinex_type, new_type, files):
 
-    # Match on the file's extension (last character before/at the end of the
-    # extension) rather than checking if rinex_type appears anywhere in the
-    # filename. The old substring check would false-positive on pipeline
-    # output files like "..._pppstatic.pos" (contains "p" repeatedly) and
+    # match on the file's extension (last character before/at the end of the
+    # extension) insteead of checking if rinex_type appears anywhere in the
+    # filename. I think the old substring check would false-positive on 
+    # output files like "..._pppstatic.pos" and
     # misidentify them as RINEX nav files.
     file_type = [
         fname for fname in files
@@ -260,10 +258,7 @@ def precise_products_download(obs_date, root, product_types=None):
     Downloads precise orbit (.sp3) and clock (.clk) files from the BKG GNSS Data Center.
     An internet connection is required for this to function.
 
-    Tries product tiers in order until one succeeds. IGS Final (FIN) products
-    aren't published until ~12-18 days after the observation date, so for
-    recent data we need to fall back to Rapid (RAP, ~17-41 hr latency) or
-    Ultra-rapid (ULT, same-day but partly predicted) products instead.
+    Tries product tiers in order until one succeeds (idk).
     """
 
     if product_types is None:
@@ -364,7 +359,7 @@ def process_base_station(base_obs_path, base_nav_path, out_pos_file, conf_file, 
         base_obs_path,
         base_nav_path
     ] + extra_files # Append the .sp3 and .clk files to the end
-
+    print(f"Static PPP command: {static_ppp_command}")
     out_frame.after(0, printOut(f"Running RTKLIB Processing..."))
     main.update_idletasks()
 
@@ -386,7 +381,6 @@ def process_base_station(base_obs_path, base_nav_path, out_pos_file, conf_file, 
 # Function - computes average base station location
 def get_base_loc(out_pos_file):
     """Parses the output .pos file and averages the coordinates."""
-
     if not os.path.exists(out_pos_file):
         return None
         
@@ -541,7 +535,7 @@ def point_list(posdf, mark_df):
     # Initialize names list equal to the length of the positions dataframe
     pname = [None] * len(posdf["Date"])
     
-    # FIX: Loop through the index of MARKERS (mark_df), not coordinates (posdf)
+    # FIX: Loop through the index of mark_df, not coordinates (posdf)
     for i in range(len(mark_df)):
         pname = point_assign(pname, posdf, i, mark_df)
 
@@ -561,7 +555,7 @@ def pos_process(pos_path, mark_df):
     posdf = pd.DataFrame() # FIX 2: Initialize posdf so it always exists
 
     for e_file in pos:
-        with open(pos_path + "\\" + e_file, 'r') as file: # Using 'with' is safer
+        with open(pos_path + "\\" + e_file, 'r') as file: # safer
             for line in file:
                 if (line[0] != '%'):
                     fields = line.split()
@@ -858,9 +852,8 @@ def longrun_task():
             if ("Base" in root) and (len(files) > 1):
 
                 # Exclude leftover pipeline output files (e.g. a stale
-                # "..._pppstatic.pos" from a previous/crashed run) before
-                # pairing obs/nav files, since such files can be
-                # misidentified as nav data by naive substring matching.
+                # "..._pppstatic.pos" from a crashed run) before
+                # pairing obs/nav files
                 base_files = [f for f in files if "pppstatic" not in f]
 
                 base_obs_path, base_nav_path = file_type_convert(root, base_files)
@@ -884,7 +877,7 @@ def longrun_task():
 
                 # Pair rover obs/nav files by matching basename rather than
                 # by adjacent list position, since os.walk()'s file order is
-                # not guaranteed to alternate obs/nav correctly.
+                # not guaranteed to alternate obs/nav correctly
                 obs_list = sorted([
                     f for f in rov_files
                     if os.path.splitext(f)[1].lower().endswith("o") or ".obs" in f.lower()
